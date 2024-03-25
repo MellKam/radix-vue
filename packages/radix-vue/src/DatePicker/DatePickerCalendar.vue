@@ -1,6 +1,7 @@
 <script lang="ts">
 import { CalendarRoot } from '..'
 import { injectDatePickerRootContext } from './DatePickerRoot.vue'
+import { type DateValue, isEqualDay } from '@internationalized/date'
 </script>
 
 <script setup lang="ts">
@@ -29,8 +30,14 @@ const rootContext = injectDatePickerRootContext()
     :multiple="false"
     :model-value="rootContext.modelValue.value"
     :placeholder="rootContext.placeholder.value"
-    @update:model-value="rootContext.onDateChange"
-    @update:placeholder="rootContext.onPlaceholderChange"
+    @update:model-value="(date: DateValue | undefined) => {
+      if (date && rootContext.modelValue.value && isEqualDay(date, rootContext.modelValue.value)) return
+      rootContext.onDateChange(date)
+    }"
+    @update:placeholder="(date: DateValue) => {
+      if (isEqualDay(date, rootContext.placeholder.value)) return
+      rootContext.onPlaceholderChange(date)
+    }"
   >
     <slot
       :date="date"

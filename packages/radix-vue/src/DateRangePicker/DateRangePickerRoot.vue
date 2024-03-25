@@ -3,9 +3,10 @@ import { type DateValue } from '@internationalized/date'
 
 import type { Ref } from 'vue'
 import { createContext } from '@/shared'
-import { type Granularity, type HourCycle, type Matcher, type SupportedLocale, type WeekDayFormat, getDefaultDate } from '@/shared/date'
+import { type Granularity, type HourCycle, type Matcher, type WeekDayFormat, getDefaultDate } from '@/shared/date'
 
 import { type CalendarRootProps, type DateRangeFieldRoot, type DateRangeFieldRootProps, PopoverRoot, type PopoverRootEmits, type PopoverRootProps } from '..'
+import type { DateRangeType } from '@/DateRangeField/DateRangeFieldRoot.vue'
 
 type DateRangePickerRootContext = {
   id: Ref<string | undefined>
@@ -16,9 +17,9 @@ type DateRangePickerRootContext = {
   granularity: Ref<Granularity | undefined>
   hideTimeZone: Ref<boolean>
   required: Ref<boolean>
-  locale: Ref<SupportedLocale>
+  locale: Ref<string>
   dateFieldRef: Ref<InstanceType<typeof DateRangeFieldRoot> | undefined>
-  modelValue: Ref<{ start: DateValue | undefined; end: DateValue | undefined }>
+  modelValue: Ref<Record<DateRangeType, DateValue | undefined>>
   placeholder: Ref<DateValue>
   pagedNavigation: Ref<boolean>
   preventDeselect: Ref<boolean>
@@ -33,7 +34,7 @@ type DateRangePickerRootContext = {
   defaultOpen: Ref<boolean>
   open: Ref<boolean>
   modal: Ref<boolean>
-  onDateChange: (date: { start: DateValue | undefined; end: DateValue | undefined }) => void
+  onDateChange: (date: Record<DateRangeType, DateValue | undefined>) => void
   onPlaceholderChange: (date: DateValue) => void
 }
 
@@ -41,7 +42,7 @@ export type DateRangePickerRootProps = DateRangeFieldRootProps & PopoverRootProp
 
 export type DateRangePickerRootEmits = {
   /** Event handler called whenever the model value changes */
-  'update:modelValue': [date: DateValue | undefined]
+  'update:modelValue': [Record<DateRangeType, DateValue | undefined>]
   /** Event handler called whenever the placeholder value changes */
   'update:placeholder': [date: DateValue]
 }
@@ -103,7 +104,7 @@ const {
 const modelValue = useVModel(props, 'modelValue', emits, {
   defaultValue: props.defaultValue ?? { start: undefined, end: undefined },
   passive: (props.modelValue === undefined) as false,
-}) as Ref<{ start: DateValue | undefined; end: DateValue | undefined }>
+}) as Ref<Record<DateRangeType, DateValue | undefined>>
 
 const defaultDate = getDefaultDate({
   defaultPlaceholder: props.placeholder,
@@ -151,10 +152,10 @@ provideDateRangePickerRootContext({
   dateFieldRef,
 
   onDateChange(date: { start: DateValue | undefined; end: DateValue | undefined }) {
-    modelValue.value = { start: date.start ? defaultDate.set({ ...date.start }) : undefined, end: date.end ? defaultDate.set({ ...date.end }) : undefined }
+    modelValue.value = { start: date.start?.copy(), end: date.end?.copy() }
   },
   onPlaceholderChange(date: DateValue) {
-    placeholder.value = defaultDate.set({ ...date })
+    placeholder.value = date.copy()
   },
 })
 </script>

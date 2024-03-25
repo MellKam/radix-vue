@@ -7,10 +7,10 @@ import { type Formatter, createContext } from '@/shared'
 
 import { useCalendar, useCalendarState } from './useCalendar'
 import { createDecade, createYear, getDefaultDate, handleCalendarInitialFocus } from '@/shared/date'
-import type { Grid, Matcher, SupportedLocale, WeekDayFormat } from '@/shared/date'
+import type { Grid, Matcher, WeekDayFormat } from '@/shared/date'
 
 type CalendarRootContext = {
-  locale: Ref<SupportedLocale>
+  locale: Ref<string>
   modelValue: Ref<DateValue | DateValue[] | undefined>
   placeholder: Ref<DateValue>
   pagedNavigation: Ref<boolean>
@@ -65,7 +65,7 @@ interface BaseCalendarRootProps extends PrimitiveProps {
   /** The minimum date that can be selected */
   minValue?: DateValue
   /** The locale to use for formatting dates */
-  locale?: SupportedLocale
+  locale?: string
   /** The number of months to display at once */
   numberOfMonths?: number
   /** Whether or not the calendar is disabled */
@@ -110,7 +110,7 @@ export const [injectCalendarRootContext, provideCalendarRootContext]
 <script setup lang="ts">
 import { computed, onMounted, toRefs, watch } from 'vue'
 import { Primitive, usePrimitiveElement } from '@/Primitive'
-import { useVModel } from '@vueuse/core'
+import { useMemoize, useVModel } from '@vueuse/core'
 
 const props = withDefaults(defineProps<CalendarRootProps>(), {
   defaultValue: undefined,
@@ -186,8 +186,7 @@ const placeholder = useVModel(props, 'placeholder', emits, {
 }) as Ref<DateValue>
 
 function onPlaceholderChange(value: DateValue) {
-  const dateRef = defaultDate.set({ ...placeholder.value })
-  placeholder.value = dateRef.set({ ...value })
+  placeholder.value = value.copy()
 }
 
 const {
@@ -204,7 +203,7 @@ const {
   formatter,
   grid,
 } = useCalendar({
-  locale: props.locale,
+  locale,
   placeholder,
   weekStartsOn: props.weekStartsOn,
   fixedWeeks: props.fixedWeeks,
@@ -241,28 +240,27 @@ watch(modelValue, (value) => {
 })
 
 function onDateChange(value: DateValue) {
-  const dateRef = defaultDate
   if (!multiple.value) {
     if (!modelValue.value) {
-      modelValue.value = dateRef.set({ ...value })
+      modelValue.value = value.copy()
       return
     }
 
     if (!preventDeselect.value && isSameDay(modelValue.value as DateValue, value))
       modelValue.value = undefined
     else
-      modelValue.value = dateRef.set({ ...value })
+      modelValue.value = value.copy()
   }
   else if (Array.isArray(modelValue.value)) {
     if (!modelValue.value) {
-      modelValue.value = [dateRef.set({ ...value })]
+      modelValue.value = [value.copy()]
 
       return
     }
 
     const index = modelValue.value.findIndex(date => isSameDay(date, value))
     if (index === -1) {
-      modelValue.value = [...modelValue.value, value]
+      modelValue.value = [...(modelValue.value.map(item => item.copy())), value.copy()]
     }
     else if (!preventDeselect.value) {
       const next = modelValue.value.filter(date => !isSameDay(date, value))
@@ -270,32 +268,32 @@ function onDateChange(value: DateValue) {
         modelValue.value = []
         return
       }
-      modelValue.value = next.map(date => dateRef.set({ ...date }))
+      modelValue.value = next.map(date => date.copy())
     }
   }
 }
 
 const getMonths = computed(() => {
-  const dateObj = defaultDate.set({ ...placeholder.value })
+  const dateObj = placeholder.value.copy()
   return createYear({
     dateObj,
-    maxValue: defaultDate.set({ ...minValue.value }),
-    minValue: defaultDate.set({ ...maxValue.value }),
+    maxValue: maxValue.value?.copy(),
+    minValue: minValue.value?.copy(),
     numberOfMonths: numberOfMonths.value,
     pagedNavigation: pagedNavigation.value,
   })
 })
 
-function getYears({ startIndex, endIndex }: { startIndex?: number; endIndex: number }) {
-  const dateObj = defaultDate
+const getYears = useMemoize(({ startIndex, endIndex }: { startIndex?: number; endIndex: number }) => {
+  const dateObj = placeholder.value.copy()
   return createDecade({
     dateObj,
     startIndex,
     endIndex,
-    maxValue: defaultDate.set({ ...minValue.value }),
-    minValue: defaultDate.set({ ...maxValue.value }),
+    maxValue: maxValue.value?.copy(),
+    minValue: minValue.value?.copy(),
   })
-}
+})
 
 onMounted(() => {
   if (initialFocus.value)

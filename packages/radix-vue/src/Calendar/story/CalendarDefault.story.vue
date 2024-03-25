@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { Icon } from '@iconify/vue'
 import { CalendarCell, CalendarCellTrigger, CalendarGrid, CalendarGridBody, CalendarGridHead, CalendarGridRow, CalendarHeadCell, CalendarHeader, CalendarHeading, CalendarNext, CalendarPrev, CalendarRoot } from '../'
+import { CalendarDate, type DateValue } from '@internationalized/date'
+import { type Ref, ref } from 'vue'
+
+const calendarDate = new CalendarDate(1980, 1, 20)
+const modelValue = ref(calendarDate) as Ref<DateValue>
+
+const maxValue = new CalendarDate(1980, 3, 31)
 </script>
 
 <template>
@@ -8,6 +15,8 @@ import { CalendarCell, CalendarCellTrigger, CalendarGrid, CalendarGridBody, Cale
     <Variant title="default">
       <CalendarRoot
         v-slot="{ weekDays, grid }"
+        v-model="modelValue"
+        :max-value="maxValue"
         class="mt-6 rounded-xl border border-black bg-white p-4 shadow-md"
       >
         <CalendarHeader class="flex items-center justify-between">

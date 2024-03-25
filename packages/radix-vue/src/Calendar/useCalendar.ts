@@ -8,7 +8,7 @@ import { type Grid, type Matcher, type WeekDayFormat, createMonths, isAfter, isB
 import { useDateFormatter } from '@/shared'
 
 export type UseCalendarProps = {
-  locale: string
+  locale: Ref<string>
   placeholder: Ref<DateValue>
   weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6
   fixedWeeks: boolean
@@ -73,15 +73,12 @@ export function useCalendarState(props: UseCalendarStateProps) {
 }
 
 export function useCalendar(props: UseCalendarProps) {
-  const formatter = useDateFormatter(props.locale)
-  const placeholder = props.placeholder.value.copy()
-  const minValue = props.minValue?.value ? placeholder.set({ ...props.minValue.value }) : undefined
-  const maxValue = props.maxValue?.value ? placeholder.set({ ...props.maxValue.value }) : undefined
+  const formatter = useDateFormatter(props.locale.value)
 
   const grid = ref<Grid<DateValue>[]>(createMonths({
-    dateObj: placeholder,
+    dateObj: props.placeholder.value,
     weekStartsOn: props.weekStartsOn,
-    locale: props.locale,
+    locale: props.locale.value,
     fixedWeeks: props.fixedWeeks,
     numberOfMonths: props.numberOfMonths,
   })) as Ref<Grid<DateValue>[]>
@@ -95,32 +92,32 @@ export function useCalendar(props: UseCalendarProps) {
   }
 
   const isNextButtonDisabled = computed(() => {
-    if (!maxValue || !grid.value.length)
+    if (!props.maxValue.value || !grid.value.length)
       return false
     if (props.disabled.value)
       return true
-    const lastPeriodInView = grid.value[grid.value.length - 1].value
+    const lastPeriodInView = grid.value[grid.value.length - 1].value.copy()
 
     const firstPeriodOfNextPage = lastPeriodInView.add({ months: 1 }).set({ day: 1 })
-    return isAfter(firstPeriodOfNextPage, maxValue)
+    return isAfter(firstPeriodOfNextPage, props.maxValue.value)
   })
 
   const isPrevButtonDisabled = computed(() => {
-    if (!minValue || !grid.value.length)
+    if (!props.minValue.value || !grid.value.length)
       return false
     if (props.disabled.value)
       return true
-    const firstPeriodInView = grid.value[0].value
+    const firstPeriodInView = grid.value[0].value.copy()
     const lastPeriodOfPrevPage = firstPeriodInView.subtract({ months: 1 }).set({ day: 35 })
-    return isBefore(lastPeriodOfPrevPage, minValue)
+    return isBefore(lastPeriodOfPrevPage, props.minValue.value)
   })
 
   function isDateDisabled(dateObj: DateValue) {
     if (props.isDateDisabled?.(dateObj) || props.disabled.value)
       return true
-    if (maxValue && isAfter(dateObj, maxValue))
+    if (props.maxValue.value && isAfter(dateObj, props.maxValue.value))
       return true
-    if (minValue && isBefore(dateObj, minValue))
+    if (props.minValue.value && isBefore(dateObj, props.minValue.value))
       return true
     return false
   }
@@ -140,12 +137,12 @@ export function useCalendar(props: UseCalendarProps) {
   })
 
   const nextPage = () => {
-    const firstDate = grid.value[0].value
+    const firstDate = grid.value[0].value.copy()
 
     const newGrid = createMonths({
       dateObj: firstDate.add({ months: props.pagedNavigation ? props.numberOfMonths : 1 }),
       weekStartsOn: props.weekStartsOn,
-      locale: props.locale,
+      locale: props.locale.value,
       fixedWeeks: props.fixedWeeks,
       numberOfMonths: props.numberOfMonths,
     })
@@ -156,12 +153,12 @@ export function useCalendar(props: UseCalendarProps) {
   }
 
   const prevPage = () => {
-    const firstDate = grid.value[0].value
+    const firstDate = grid.value[0].value.copy()
 
     const newGrid = createMonths({
       dateObj: firstDate.subtract({ months: props.pagedNavigation ? props.numberOfMonths : 1 }),
       weekStartsOn: props.weekStartsOn,
-      locale: props.locale,
+      locale: props.locale.value,
       fixedWeeks: props.fixedWeeks,
       numberOfMonths: props.numberOfMonths,
     })
@@ -170,11 +167,11 @@ export function useCalendar(props: UseCalendarProps) {
   }
 
   watch(props.placeholder, (value, oldValue) => {
-    if (!isSameMonth(placeholder.set({ ...value }), placeholder.set({ ...oldValue }))) {
+    if (!isSameMonth(value, oldValue)) {
       grid.value = createMonths({
-        dateObj: placeholder.set({ ...value }),
+        dateObj: value.copy(),
         weekStartsOn: props.weekStartsOn,
-        locale: props.locale,
+        locale: props.locale.value,
         fixedWeeks: props.fixedWeeks,
         numberOfMonths: props.numberOfMonths,
       })
@@ -185,16 +182,16 @@ export function useCalendar(props: UseCalendarProps) {
     if (!grid.value.length)
       return ''
 
-    if (props.locale !== formatter.getLocale())
-      formatter.setLocale(props.locale)
+    if (props.locale.value !== formatter.getLocale())
+      formatter.setLocale(props.locale.value)
 
     if (grid.value.length === 1) {
-      const month = toDate(grid.value[0].value)
+      const month = toDate(grid.value[0].value.copy())
       return `${formatter.fullMonthAndYear(month)}`
     }
 
-    const startMonth = toDate(grid.value[0].value as DateValue)
-    const endMonth = toDate(grid.value[grid.value.length - 1].value as DateValue)
+    const startMonth = toDate(grid.value[0].value.copy() as DateValue)
+    const endMonth = toDate(grid.value[grid.value.length - 1].value.copy() as DateValue)
 
     const startMonthName = formatter.fullMonth(startMonth)
     const endMonthName = formatter.fullMonth(endMonth)

@@ -1,17 +1,15 @@
 <script lang="ts">
-import { type DateValue } from '@internationalized/date'
+import { type DateValue, isEqualDay } from '@internationalized/date'
 
 import type { Ref } from 'vue'
 import type { PrimitiveProps } from '@/Primitive'
 import { type Formatter, createContext, useDateFormatter, useKbd } from '@/shared'
 import {
-  type AnyExceptLiteral,
   type Granularity,
   type HourCycle,
   type Matcher,
   type SegmentPart,
   type SegmentValueObj,
-  type SupportedLocale,
   getDefaultDate,
   hasTime,
   isBefore,
@@ -19,7 +17,7 @@ import {
 import { createContent, initializeSegmentValues, isSegmentNavigationKey, syncSegmentValues } from './utils'
 
 type DateFieldRootContext = {
-  locale: Ref<SupportedLocale>
+  locale: Ref<string>
   modelValue: Ref<DateValue | undefined>
   placeholder: Ref<DateValue>
   isDateUnavailable?: Matcher
@@ -56,7 +54,7 @@ export interface DateFieldRootProps extends PrimitiveProps {
   /** The minimum date that can be selected */
   minValue?: DateValue
   /** The locale to use for formatting dates */
-  locale?: SupportedLocale
+  locale?: string
   /** Whether or not the date field is disabled */
   disabled?: boolean
   /** Whether or not the date field is readonly */
@@ -140,7 +138,7 @@ const placeholder = useVModel(props, 'placeholder', emits, {
 
 const inferredGranularity = computed(() => {
   if (props.granularity)
-    return props.granularity
+    return !hasTime(placeholder.value) ? 'day' : props.granularity
 
   return hasTime(placeholder.value) ? 'minute' : 'day'
 })
@@ -172,42 +170,24 @@ const allSegmentContent = computed(() => createContent({
   hideTimeZone: props.hideTimeZone,
   hourCycle: props.hourCycle,
   segmentValues: segmentValues.value,
-  locale: props.locale,
+  locale,
 }))
 
 const segmentContents = computed(() => allSegmentContent.value.arr)
 
 const editableSegmentContents = computed(() => segmentContents.value.filter(({ part }) => part !== 'literal'))
 
-watch(segmentValues, (value) => {
-  if (Object.values(value).every(item => item !== null)) {
-    let updateObject = { ...value as Record<AnyExceptLiteral, number> }
-    if ('dayPeriod' in value) {
-      updateObject = {
-        ...updateObject,
-        hour: value.dayPeriod === 'PM' && !modelValue.value ? value.hour! + 12 : value.hour!,
-      }
-    }
-
-    let dateRef = defaultDate.set({ ...placeholder.value })
-    Object.keys(updateObject).forEach((part) => {
-      const value = updateObject[part as AnyExceptLiteral]
-      dateRef = dateRef.set({ [part]: value })
-    })
-
-    if (modelValue.value && modelValue.value.toString() === dateRef.toString())
-      return
-
-    modelValue.value = defaultDate.set({ ...dateRef })
-  }
-}, { deep: true })
-
-watch(modelValue, (value) => {
-  if (value !== undefined && placeholder.value.toString() !== value.toString())
-    placeholder.value = defaultDate.set({ ...value })
+watch(locale, (value) => {
+  if (formatter.getLocale() !== value)
+    formatter.setLocale(value)
 })
 
-watch(modelValue, (modelValue) => {
+watch(modelValue, (value) => {
+  if (value !== undefined && (!isEqualDay(placeholder.value, value) || placeholder.value.compare(value) !== 0))
+    placeholder.value = value.copy()
+})
+
+watch([modelValue, locale], ([modelValue]) => {
   if (modelValue !== undefined)
     segmentValues.value = { ...syncSegmentValues({ value: modelValue, formatter }) }
   else
@@ -287,7 +267,11 @@ defineExpose({
     :data-invalid="isInvalid ? '' : undefined"
     @keydown.left.right="handleKeydown"
   >
-    <slot :model-value="defaultDate.set({ ...modelValue })" :segments="segmentContents" :is-invalid="isInvalid" />
+    <slot
+      :model-value="modelValue"
+      :segments="segmentContents"
+      :is-invalid="isInvalid"
+    />
   </Primitive>
 
   <input

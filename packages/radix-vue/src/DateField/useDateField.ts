@@ -1,5 +1,5 @@
 import { type Formatter, useKbd } from '@/shared'
-import { type HourCycle, type SegmentPart, type SegmentValueObj, getDaysInMonth, toDate } from '@/shared/date'
+import { type AnyExceptLiteral, type HourCycle, type SegmentPart, type SegmentValueObj, getDaysInMonth, toDate } from '@/shared/date'
 import type { CalendarDateTime, CycleTimeOptions, DateFields, DateValue, TimeFields } from '@internationalized/date'
 import { type Ref, computed } from 'vue'
 import { isAcceptableSegmentKey, isNumberString, isSegmentNavigationKey } from './utils'
@@ -246,12 +246,12 @@ export type UseDateFieldProps = {
   readonly: Ref<boolean>
   part: SegmentPart
   focusNext: () => void
-  defaultDate: DateValue
+  modelValue: Ref<DateValue | undefined>
 }
 
 export function useDateField(props: UseDateFieldProps) {
   const kbd = useKbd()
-  const placeholder = props.defaultDate.set({ ...props.placeholder.value })
+  const placeholder = props.placeholder.value.copy()
 
   function minuteSecondIncrementation({ e, part, dateRef, prevValue }: MinuteSecondIncrementProps): number {
     const sign = e.key === kbd.ARROW_UP ? 1 : -1
@@ -802,6 +802,27 @@ export function useDateField(props: UseDateFieldProps) {
     } as const
 
     segmentKeydownHandlers[props.part as keyof typeof segmentKeydownHandlers](e)
+
+    if (!isSegmentNavigationKey(e.key) && e.key !== kbd.TAB && e.key !== kbd.SHIFT && isAcceptableSegmentKey(e.key)) {
+      if (Object.values(props.segmentValues.value).every(item => item !== null)) {
+        let updateObject = { ...props.segmentValues.value as Record<AnyExceptLiteral, number> }
+        if ('dayPeriod' in props.segmentValues.value) {
+          updateObject = {
+            ...updateObject,
+            hour: props.segmentValues.value.dayPeriod === 'PM' && !props.modelValue.value ? props.segmentValues.value.hour! + 12 : props.segmentValues.value.hour!,
+          }
+        }
+
+        let dateRef = placeholder.copy()
+
+        Object.keys(updateObject).forEach((part) => {
+          const value = updateObject[part as AnyExceptLiteral]
+          dateRef = dateRef.set({ [part]: value })
+        })
+
+        props.modelValue.value = dateRef.copy()
+      }
+    }
   }
 
   return {
