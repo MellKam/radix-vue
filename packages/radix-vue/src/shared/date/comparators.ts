@@ -14,12 +14,6 @@ type GetDefaultDateProps = {
   granularity?: Granularity
 }
 
-const defaultDateDefaults = {
-  defaultValue: undefined,
-  defaultPlaceholder: undefined,
-  granularity: 'day',
-}
-
 /**
  * A helper function used throughout the various date builders
  * to generate a default `DateValue` using the `defaultValue`,
@@ -30,31 +24,28 @@ const defaultDateDefaults = {
  * behavior the user expects based on the props they've provided.
  *
  */
-export function getDefaultDate(props?: GetDefaultDateProps): DateValue {
-  const withDefaults = { ...defaultDateDefaults, ...props }
-  const { defaultValue, defaultPlaceholder, granularity } = withDefaults
+export function getDefaultDate(props: GetDefaultDateProps): DateValue {
+  const { defaultValue, defaultPlaceholder, granularity = 'day' } = props
 
   if (Array.isArray(defaultValue) && defaultValue.length)
-    return defaultValue[defaultValue.length - 1]
+    return defaultValue.at(-1)!.copy()
 
-  if (defaultValue && !Array.isArray(defaultValue)) {
-    return defaultValue
-  }
-  else if (defaultPlaceholder) {
-    return defaultPlaceholder
-  }
-  else {
-    const date = new Date()
-    const year = date.getFullYear()
-    const month = date.getMonth() + 1
-    const day = date.getDate()
-    const calendarDateTimeGranularities = ['hour', 'minute', 'second']
+  if (defaultValue && !Array.isArray(defaultValue))
+    return defaultValue.copy()
 
-    if (calendarDateTimeGranularities.includes(granularity ?? 'day'))
-      return new CalendarDateTime(year, month, day, 0, 0, 0)
+  if (defaultPlaceholder)
+    return defaultPlaceholder.copy()
 
-    return new CalendarDate(year, month, day)
-  }
+  const date = new Date()
+  const year = date.getFullYear()
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+  const calendarDateTimeGranularities = ['hour', 'minute', 'second']
+
+  if (calendarDateTimeGranularities.includes(granularity ?? 'day'))
+    return new CalendarDateTime(year, month, day, 0, 0, 0)
+
+  return new CalendarDate(year, month, day)
 }
 
 /**

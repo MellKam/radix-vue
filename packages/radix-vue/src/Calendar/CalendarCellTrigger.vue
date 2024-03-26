@@ -73,15 +73,6 @@ function changeDate(date: DateValue) {
   rootContext.onDateChange(date)
 }
 
-function handleClick(e: Event) {
-  changeDate(
-    parseStringToDateValue(
-      (e.target as HTMLDivElement).getAttribute('data-value')!,
-      rootContext.placeholder.value,
-    ),
-  )
-}
-
 function handleArrowKey(e: KeyboardEvent) {
   const currentCell = e.target as HTMLDivElement
   e.preventDefault()
@@ -161,8 +152,9 @@ const formattedTriggerText = computed(() => {
 <template>
   <Primitive
     ref="primitiveElement"
-    v-bind="props"
     role="button"
+    :as="props.as"
+    :as-child="props.asChild"
     :aria-label="labelText"
     data-radix-vue-calendar-cell-trigger
     :aria-disabled="isOutsideView || isDisabled || isUnavailable ? true : undefined"
@@ -175,7 +167,7 @@ const formattedTriggerText = computed(() => {
     :data-outside-visible-view="isOutsideVisibleView ? '' : undefined"
     :data-focused="isFocusedDate ? '' : undefined"
     :tabindex="isFocusedDate ? 0 : isOutsideView || isDisabled ? undefined : -1"
-    @click="handleClick"
+    @click="changeDate(props.day)"
     @keydown.up.down.left.right.space.enter="handleArrowKey"
     @keydown.enter.prevent
   >

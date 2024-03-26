@@ -18,8 +18,9 @@ const rootContext = injectCalendarRootContext()
 
 <template>
   <Primitive
-    v-bind="props"
     role="gridcell"
+    :as="props.as"
+    :as-child="props.asChild"
     :aria-selected="rootContext.isDateSelected(date) ? true : undefined"
     :aria-disabled="rootContext.isDateDisabled(date) || rootContext.isDateUnavailable?.(date)"
     :data-disabled="rootContext.isDateDisabled(date) ? '' : undefined"
